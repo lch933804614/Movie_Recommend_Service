@@ -4,3 +4,5 @@
 SM: 이창현
 PO: 김성욱
 DT: 박상현, 김영재, 박고근
+## 개발언어
+Spring Boot(Java)
