@@ -1,5 +1,5 @@
 import pandas as pd
-from sqlalchemy import create_engine, Table, Column, Integer, MetaData
+from sqlalchemy import create_engine, Table, Column, Integer, MetaData, ForeignKey
 
 # CSV 파일에서 데이터 읽기
 csv_file = "./data/links.csv"
@@ -13,11 +13,11 @@ engine = create_engine(db_uri)
 metadata = MetaData()
 
 # links 테이블 생성
-movies = Table('links', metadata,
-               Column('movieId', Integer, primary_key=True),
-               Column('imdbId', Integer),
-               Column('tmdbId', Integer)
-              )
+links = Table('links', metadata,
+              Column('movieId', Integer, ForeignKey('movies.movieId'), primary_key=True),
+              Column('imdbId', Integer),
+              Column('tmdbId', Integer)
+             )
 
 # 데이터베이스에 테이블 생성
 metadata.create_all(engine)
