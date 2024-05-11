@@ -63,6 +63,9 @@ class MyApp(QWidget):
             rating_avg_item.setFlags(rating_avg_item.flags() & ~Qt.ItemIsEditable)  # 편집 불가능하도록 설정
             self.movie_table_widget.setItem(row, 2, rating_avg_item)
 
+        # 영화 테이블의 아이템 클릭 시 상세 정보 표시
+        self.movie_table_widget.itemClicked.connect(self.show_movie_detail)
+        
         # 검색 상자 추가
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("제목을 입력하세요.")
@@ -165,7 +168,7 @@ class MyApp(QWidget):
             ):
                 self.movie_table_widget.setRowHidden(row, False)
             else:
-                 self.movie_table_widget.setRowHidden(row, True)
+                self.movie_table_widget.setRowHidden(row, True)
 
 
 if __name__ == '__main__':
