@@ -90,15 +90,19 @@ class MyApp(QWidget):
             self.genre_layout.addWidget(checkbox)
                     
         # 평점 범위 입력 상자 추가
+        self.rating_checkbox = QCheckBox('평점 검색')
+        self.rating_checkbox.stateChanged.connect(self.toggle_rating)
+        self.rating_checkbox.stateChanged.connect(self.filter_table)
         self.min_rating_box = QDoubleSpinBox()
         self.max_rating_box = QDoubleSpinBox()
         self.min_rating_box.setRange(1.0, 5.0)
+        self.min_rating_box.setEnabled(False)
         self.max_rating_box.setRange(1.0, 5.0)
+        self.max_rating_box.setEnabled(False)
         self.min_rating_box.setSingleStep(0.01)
         self.max_rating_box.setSingleStep(0.01)
         self.min_rating_box.setValue(1.0)
         self.max_rating_box.setValue(5.0)
-        rating_label = QLabel("평점: ")
         from_label = QLabel("에서")
         to_label = QLabel("까지")
         self.min_rating_box.textChanged.connect(self.filter_table)
@@ -106,7 +110,7 @@ class MyApp(QWidget):
 
         # 수평 레이아웃 생성
         hbox = QHBoxLayout()
-        hbox.addWidget(rating_label)
+        hbox.addWidget(self.rating_checkbox)
         hbox.addWidget(self.min_rating_box)
         hbox.addWidget(from_label)
         hbox.addWidget(self.max_rating_box)
@@ -133,6 +137,11 @@ class MyApp(QWidget):
         message = f"Title: {title}\nGenres: {genres}"
         QMessageBox.information(self, "MovieInfo", message)
 
+    def toggle_rating(self, state):
+        # 평점 검색 체크박스가 선택된 경우 평점 검색을 활성화합니다.
+        self.min_rating_box.setEnabled(state == Qt.Checked)
+        self.max_rating_box.setEnabled(state == Qt.Checked)
+
     def toggle_all_genres(self, state):
         # "전체" 체크박스가 선택된 경우 장르 체크박스를 비활성화합니다.
         for checkbox in self.genre_checkboxes:
@@ -142,6 +151,7 @@ class MyApp(QWidget):
         search_text = self.search_box.text().lower()
         selected_genres_all = self.all_checkbox.isChecked()
         selected_genres = [checkbox.text().lower() for checkbox in self.genre_checkboxes if checkbox.isChecked()]
+        ratingsearch_enabled = self.rating_checkbox.isChecked()
         min_rating = float(self.min_rating_box.text()) if self.min_rating_box.text() else 0.0
         max_rating = float(self.max_rating_box.text()) if self.max_rating_box.text() else float('inf')
         for row in range(self.movie_table_widget.rowCount()):
@@ -151,7 +161,7 @@ class MyApp(QWidget):
             if (
                 search_text in title and 
                 (self.all_checkbox.isChecked() or all(genre in genres.split('|') for genre in selected_genres)) and
-                min_rating <= rating_avg <= max_rating
+                (not self.rating_checkbox.isChecked() or min_rating <= rating_avg <= max_rating)
             ):
                 self.movie_table_widget.setRowHidden(row, False)
             else:
