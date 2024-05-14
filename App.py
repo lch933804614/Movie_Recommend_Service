@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QLineEdit, QMessageBox, QPushButton, QCheckBox, QHBoxLayout, QLabel, QDoubleSpinBox
+from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QLineEdit, QMessageBox, QPushButton, QCheckBox, QHBoxLayout, QLabel, QDoubleSpinBox, QTabWidget
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 from sqlalchemy import create_engine, Table, Column, Integer, String, Float, MetaData
@@ -14,6 +14,30 @@ class MyApp(QWidget):
         self.setWindowIcon(QIcon('ClapperBoardIcon.png')) 
         self.setGeometry(450, 150, 1000, 800)
 
+        # 탭 위젯 생성
+        self.tab_widget = QTabWidget()
+
+        # 영화 리스트 탭
+        self.movie_tab = QWidget()
+        self.initMovieTab()
+
+        # 영화 추천 탭
+        self.recommendation_tab = QWidget()
+        self.initRecommendationTab()
+
+        # 탭 위젯에 탭 추가
+        self.tab_widget.addTab(self.movie_tab, "영화 리스트")
+        self.tab_widget.addTab(self.recommendation_tab, "영화 추천")
+
+        # 수직 레이아웃 생성 및 탭 위젯 추가
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.tab_widget)
+        self.setLayout(vbox)
+
+        self.show()
+
+    def initMovieTab(self):
+        # 영화 리스트 탭 초기화 메서드
         # 데이터베이스 연결 설정
         db_uri = 'sqlite:///data.db'
         engine = create_engine(db_uri)
@@ -128,8 +152,23 @@ class MyApp(QWidget):
         vbox.addLayout(hbox)
         vbox.addWidget(self.movie_table_widget)
 
-        self.setLayout(vbox)
-        self.show()
+        self.movie_tab.setLayout(vbox)
+
+    def initRecommendationTab(self):
+        # 영화 추천 탭 초기화 메서드
+        # 버튼 추가
+        recommend_button = QPushButton("영화 추천으로 이동")
+        recommend_button.clicked.connect(self.go_to_recommendation)
+
+        # 수직 레이아웃 생성 및 버튼 추가
+        vbox = QVBoxLayout()
+        vbox.addWidget(recommend_button)
+
+        self.recommendation_tab.setLayout(vbox)
+
+    # 영화 추천 페이지로 이동하는 메서드
+    def go_to_recommendation(self):
+        self.tab_widget.setCurrentIndex(1)  # 영화 추천 탭의 인덱스는 1이므로 해당 탭으로 이동합니다.
 
     # 영화 제목 클릭 시 상세정보 표시
     def show_movie_detail(self, item):
