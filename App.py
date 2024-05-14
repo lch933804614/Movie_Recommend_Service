@@ -1,8 +1,9 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QLineEdit, QMessageBox, QPushButton, QCheckBox, QHBoxLayout, QLabel, QDoubleSpinBox, QTabWidget
+from PyQt5.QtWidgets import QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QLineEdit, QMessageBox, QPushButton, QCheckBox, QHBoxLayout, QLabel, QDoubleSpinBox, QTabWidget, QInputDialog
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 from sqlalchemy import create_engine, Table, Column, Integer, String, Float, MetaData
+from collections import defaultdict
 
 class MyApp(QWidget):
     def __init__(self):
@@ -157,18 +158,75 @@ class MyApp(QWidget):
     def initRecommendationTab(self):
         # 영화 추천 탭 초기화 메서드
         # 버튼 추가
-        recommend_button = QPushButton("영화 추천으로 이동")
-        recommend_button.clicked.connect(self.go_to_recommendation)
+        self.selected_movies = []  # 선택된 영화를 저장할 리스트
 
-        # 수직 레이아웃 생성 및 버튼 추가
-        vbox = QVBoxLayout()
-        vbox.addWidget(recommend_button)
+        # 선택된 영화를 표시할 QLabel 추가
+        self.selected_movies_label = QLabel("선택된 영화:")
+        self.selected_movies_display = QLabel("")
+        # 영화 선택 버튼 추가
+        select_movie_button = QPushButton("영화 선택")
+        select_movie_button.clicked.connect(self.select_movie)
+        # 영화 추천 버튼 추가
+        recommend_movie_button = QPushButton("영화 추천")
+        recommend_movie_button.clicked.connect(self.recommend_movie)
+
+        # 수직 레이아웃 생성
+        vbox = QVBoxLayout() 
+        vbox.addWidget(self.selected_movies_label)
+        vbox.addWidget(self.selected_movies_display)
+        vbox.addWidget(select_movie_button)
+        vbox.addWidget(recommend_movie_button)
 
         self.recommendation_tab.setLayout(vbox)
 
-    # 영화 추천 페이지로 이동하는 메서드
-    def go_to_recommendation(self):
-        self.tab_widget.setCurrentIndex(1)  # 영화 추천 탭의 인덱스는 1이므로 해당 탭으로 이동합니다.
+    # 영화 선택 메서드
+    def select_movie(self):
+        selected_movie, ok = QInputDialog.getText(self, '영화 선택', '영화 제목을 입력하세요:')
+        if ok and selected_movie:
+            self.selected_movies.append(selected_movie)
+            self.update_selected_movies_display()
+
+    # 선택된 영화 표시 업데이트 메서드
+    def update_selected_movies_display(self):
+        self.selected_movies_display.setText("\n".join(self.selected_movies))
+
+    # 영화 추천 메서드
+    def recommend_movie(self):
+        if self.selected_movies:
+            # 선택된 영화와 관련된 장르 수 계산
+            genre_counter = defaultdict(int)
+            for movie in self.selected_movies:
+                for row in range(self.movie_table_widget.rowCount()):
+                    title = self.movie_table_widget.item(row, 0).text().lower()
+                    genres = self.movie_table_widget.item(row, 1).text().lower()
+                    rating_avg = float(self.movie_table_widget.item(row, 2).text()) if self.movie_table_widget.item(row, 2) else 0.0
+                    if movie.lower() == title:
+                        for genre in genres.split('|'):
+                            genre_counter[genre] += 1
+
+            if genre_counter:
+                # 선택된 영화와 관련된 장르 중 가장 많이 등장한 장르 선택
+                most_common_genre = max(genre_counter, key=genre_counter.get)
+
+                # 선택된 영화와 관련된 장르 중 가장 높은 평점의 영화 찾기
+                highest_rated_movie = None
+                highest_rating = 0.0
+                for row in range(self.movie_table_widget.rowCount()):
+                    title = self.movie_table_widget.item(row, 0).text()
+                    genres = self.movie_table_widget.item(row, 1).text().lower()
+                    rating_avg = float(self.movie_table_widget.item(row, 2).text()) if self.movie_table_widget.item(row, 2) else 0.0
+                    if most_common_genre in genres.split('|') and rating_avg > highest_rating:
+                        highest_rated_movie = title
+                        highest_rating = rating_avg
+
+                if highest_rated_movie:
+                    QMessageBox.information(self, "영화 추천", f"추천된 영화: {highest_rated_movie}")
+                else:
+                    QMessageBox.information(self, "영화 추천", "추천할 영화를 찾을 수 없습니다.")
+            else:
+                QMessageBox.information(self, "영화 추천", "선택된 영화와 관련된 장르가 없습니다.")
+        else:
+            QMessageBox.information(self, "영화 추천", "선택된 영화가 없습니다.")
 
     # 영화 제목 클릭 시 상세정보 표시
     def show_movie_detail(self, item):
