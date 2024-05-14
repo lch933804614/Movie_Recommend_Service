@@ -9,7 +9,7 @@ def add_rating(df):
         rating_avg=('rating','mean')
     ).reset_index()
     rating_added_df=df.merge(agg_df, on='movieId')
-    return rating_added_df;
+    return rating_added_df
 
 if __name__=="__main__":
     movies_df = pd.read_csv('data/movies.csv')
@@ -17,7 +17,7 @@ if __name__=="__main__":
     links_df=pd.read_csv('data/links.csv', dtype=str)
     merged_df = movies_df.merge(links_df, on='movieId', how='left')
     result_df = add_rating(merged_df)
-
+    
     # SQLite 데이터베이스 엔진 생성
     engine = create_engine('sqlite:///data.db', echo=True)
 

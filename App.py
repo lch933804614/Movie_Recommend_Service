@@ -11,7 +11,7 @@ class MyApp(QWidget):
 
     def initUI(self):
         self.setWindowTitle('Movie RC System')
-        self.setWindowIcon(QIcon('ClapperBoardIcon.png'))
+        self.setWindowIcon(QIcon('ClapperBoardIcon.png')) 
         self.setGeometry(450, 150, 1000, 800)
 
         # 데이터베이스 연결 설정
@@ -141,12 +141,12 @@ class MyApp(QWidget):
         QMessageBox.information(self, "MovieInfo", message)
 
     def toggle_rating(self, state):
-        # 평점 검색 체크박스가 선택된 경우 평점 검색을 활성화합니다.
+        # 평점 검색 체크박스가 선택된 경우 평점 검색을 활성화
         self.min_rating_box.setEnabled(state == Qt.Checked)
         self.max_rating_box.setEnabled(state == Qt.Checked)
 
     def toggle_all_genres(self, state):
-        # "전체" 체크박스가 선택된 경우 장르 체크박스를 비활성화합니다.
+        # "전체" 체크박스가 선택된 경우 장르 체크박스를 비활성화
         for checkbox in self.genre_checkboxes:
             checkbox.setEnabled(state != Qt.Checked)
 
