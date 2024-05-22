@@ -153,6 +153,7 @@ class MyApp(QWidget):
 
         self.movie_tab.setLayout(vbox)
 
+<<<<<<< HEAD
     # 영화 추천 탭 초기화 메서드
     def initRecommendationTab(self):
         # 버튼 추가
@@ -168,6 +169,8 @@ class MyApp(QWidget):
         self.tab_widget.setCurrentIndex(1)  # 영화 추천 탭의 인덱스는 1이므로 해당 탭으로 이동
 
     # 영화정보 불러오기
+=======
+>>>>>>> 2f2771668dd3517de3e2b6f565342018d7b0eb01
     def get_movie_info_from_database(self, movie_title):
         db_uri = 'sqlite:///data.db'
         engine = create_engine(db_uri)
