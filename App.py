@@ -11,7 +11,7 @@ class MyApp(QWidget):
 
     def initUI(self):
         self.setWindowTitle('Movie RC System')
-        self.setWindowIcon(QIcon('ClapperBoardIcon.png')) 
+        self.setWindowIcon(QIcon('ClapperBoardIcon.png'))
         self.setGeometry(450, 150, 1000, 800)
 
         # 탭 위젯 생성
@@ -106,7 +106,7 @@ class MyApp(QWidget):
         self.genre_checkboxes = []
         self.genre_layout = QHBoxLayout()
         for genre in [
-            'Action', 'Adventure', 'Animation', "Children's", 'Comedy', 'Crime',
+            'Action', 'Adventure', 'Animation', "Children", 'Comedy', 'Crime',
             'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical',
             'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western'
         ]:
@@ -170,22 +170,62 @@ class MyApp(QWidget):
     def go_to_recommendation(self):
         self.tab_widget.setCurrentIndex(1)  # 영화 추천 탭의 인덱스는 1이므로 해당 탭으로 이동합니다.
 
-    # 영화 제목 클릭 시 상세정보 표시
+    def get_movie_info_from_database(self, movie_title):
+        db_uri = 'sqlite:///data.db'
+        engine = create_engine(db_uri)
+        metadata = MetaData()
+        movies = Table('movies', metadata, autoload_with=engine)
+        with engine.connect() as conn:
+            query = movies.select().where(movies.c.title == movie_title)
+            movie = conn.execute(query).fetchone()
+        if movie:
+            return movie[1], movie[2], movie[0]  # title, genres, movieId
+        return None, None, None
+
+    # 태그 정보 불러오는 메소드
+    def get_movie_tags_from_database(self, movie_id):
+        db_uri = 'sqlite:///data.db'
+        engine = create_engine(db_uri)
+        metadata = MetaData()
+        tags = Table('tags', metadata,
+                     Column('userId', Integer),
+                     Column('movieId', Integer),
+                     Column('tag', String),
+                     Column('timestamp', Integer)
+                    )
+        with engine.connect() as conn:
+            query = tags.select().where(tags.c.movieId == movie_id)
+            tags_list = conn.execute(query).fetchall()
+        return [tag[2] for tag in tags_list]
+    
+    # 상세정보창을 띄우는 메소드
     def show_movie_detail(self, item):
         row = item.row()
-        title = self.movie_table_widget.item(row, 0).text()
-        genres = self.movie_table_widget.item(row, 1).text()
-
-        message = f"Title: {title}\nGenres: {genres}"
-        QMessageBox.information(self, "MovieInfo", message)
+        movie_title = self.movie_table_widget.item(row, 0).text()
+        movie_genres = self.movie_table_widget.item(row, 1).text()
+        db_uri = 'sqlite:///data.db'
+        engine = create_engine(db_uri)
+        metadata = MetaData()
+        movies = Table('movies', metadata, autoload_with=engine)
+        with engine.connect() as conn:
+            query = movies.select().where(movies.c.title == movie_title)
+            movie = conn.execute(query).fetchone()
+        if movie:
+            movie_id = movie[0]
+            movie_tags = self.get_movie_tags_from_database(movie_id)
+            tags_text = ', '.join(movie_tags) if movie_tags else 'No tags available'
+            message = f"Title: {movie_title}\nGenres: {movie_genres}\nTags: {tags_text}"
+            QMessageBox.information(self, "Movie Info", message)
+        else:
+            QMessageBox.information(self, "Movie Info", f"No details found for {movie_title}")
 
     def toggle_rating(self, state):
-        # 평점 검색 체크박스가 선택된 경우 평점 검색을 활성화
+        # 평점 검색 체크박스가 선택된 경우 평점 검색을 활성화합니다.
         self.min_rating_box.setEnabled(state == Qt.Checked)
         self.max_rating_box.setEnabled(state == Qt.Checked)
 
     def toggle_all_genres(self, state):
-        # "전체" 체크박스가 선택된 경우 장르 체크박스를 비활성화
+        # "전체" 체크박스가 선택된 경우 장르 체크박스를 비활성화합니다.
         for checkbox in self.genre_checkboxes:
             checkbox.setEnabled(state != Qt.Checked)
 
