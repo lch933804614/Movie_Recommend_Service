@@ -1,8 +1,55 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QLineEdit, QMessageBox, QPushButton, QCheckBox, QHBoxLayout, QLabel, QDoubleSpinBox
-from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QApplication, QDialog, QWidget, QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QLineEdit, QMessageBox, QPushButton, QCheckBox, QHBoxLayout, QLabel, QDoubleSpinBox
+from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt
 from sqlalchemy import create_engine, Table, Column, Integer, String, Float, MetaData
+import requests
+import tmdbsimple as tmdb
+
+# TMDb API 키 설정
+tmdb.API_KEY = 'ef1218269ce140d0b05e4f622f7fcd02'
+
+def fetch_movie_poster_from_tmdb(movie_id):
+    movie = tmdb.Movies(movie_id)
+    response = movie.info()
+    poster_path = response.get('poster_path')
+    if poster_path:
+        poster_url = f'https://image.tmdb.org/t/p/original{poster_path}'
+        return poster_url
+    else:
+        return None
+
+class MovieDetailDialog(QDialog):
+    def __init__(self, title, genres, tags, poster_url, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Movie Info")
+        self.setFixedSize(500, 600)  # 고정된 크기로 설정
+        
+        layout = QVBoxLayout()
+        
+        # 영화 제목
+        title_label = QLabel(f"<b>Title:</b> {title}")
+        layout.addWidget(title_label)
+        
+        # 영화 장르
+        genres_label = QLabel(f"<b>Genres:</b> {genres}")
+        layout.addWidget(genres_label)
+        
+        # 영화 태그
+        tags_label = QLabel(f"<b>Tags:</b> {tags}")
+        layout.addWidget(tags_label)
+        
+        # 영화 포스터
+        if poster_url:
+            response = requests.get(poster_url)
+            pixmap = QPixmap()
+            pixmap.loadFromData(response.content)
+            scaled_pixmap = pixmap.scaledToWidth(300)  # 가로 너비를 300으로 조절
+            poster_label = QLabel()
+            poster_label.setPixmap(scaled_pixmap)
+            layout.addWidget(poster_label)
+        
+        self.setLayout(layout)
 
 class MyApp(QWidget):
     def __init__(self):
@@ -153,7 +200,6 @@ class MyApp(QWidget):
 
         self.movie_tab.setLayout(vbox)
 
-<<<<<<< HEAD
     # 영화 추천 탭 초기화 메서드
     def initRecommendationTab(self):
         # 버튼 추가
@@ -169,8 +215,6 @@ class MyApp(QWidget):
         self.tab_widget.setCurrentIndex(1)  # 영화 추천 탭의 인덱스는 1이므로 해당 탭으로 이동
 
     # 영화정보 불러오기
-=======
->>>>>>> 2f2771668dd3517de3e2b6f565342018d7b0eb01
     def get_movie_info_from_database(self, movie_title):
         db_uri = 'sqlite:///data.db'
         engine = create_engine(db_uri)
@@ -199,26 +243,37 @@ class MyApp(QWidget):
             tags_list = conn.execute(query).fetchall()
         return [tag[2] for tag in tags_list]
     
-    # 상세정보창을 띄우는 메소드
     def show_movie_detail(self, item):
         row = item.row()
         movie_title = self.movie_table_widget.item(row, 0).text()
-        movie_genres = self.movie_table_widget.item(row, 1).text()
         db_uri = 'sqlite:///data.db'
         engine = create_engine(db_uri)
         metadata = MetaData()
         movies = Table('movies', metadata, autoload_with=engine)
+        links = Table('links', metadata, autoload_with=engine)
         with engine.connect() as conn:
             query = movies.select().where(movies.c.title == movie_title)
             movie = conn.execute(query).fetchone()
-        if movie:
-            movie_id = movie[0]
-            movie_tags = self.get_movie_tags_from_database(movie_id)
-            tags_text = ', '.join(movie_tags) if movie_tags else 'No tags available'
-            message = f"Title: {movie_title}\nGenres: {movie_genres}\nTags: {tags_text}"
-            QMessageBox.information(self, "Movie Info", message)
-        else:
-            QMessageBox.information(self, "Movie Info", f"No details found for {movie_title}")
+            if movie:
+                movie_id = movie[0]
+                tmdb_id_query = links.select().where(links.c.movieId == movie_id)
+                tmdb_id_result = conn.execute(tmdb_id_query).fetchone()
+                if tmdb_id_result:
+                    tmdb_id = tmdb_id_result[2]
+                    movie_genres = movie[2]
+                    movie_tags = self.get_movie_tags_from_database(movie_id)
+                    tags_text = ', '.join(movie_tags) if movie_tags else 'No tags available'
+                    
+                    # TMDb API를 사용하여 영화 포스터를 가져옵니다.
+                    poster_url = fetch_movie_poster_from_tmdb(tmdb_id)
+                    
+                    # 영화 상세 정보 다이얼로그 표시
+                    dialog = MovieDetailDialog(movie_title, movie_genres, tags_text, poster_url, parent=self)
+                    dialog.exec_()
+                else:
+                    QMessageBox.information(self, "Movie Info", f"No TMDB ID found for {movie_title}")
+            else:
+                QMessageBox.information(self, "Movie Info", f"No details found for {movie_title}")
 
     def toggle_rating(self, state):
         # 평점 검색 체크박스가 선택된 경우 평점 검색을 활성화
