@@ -242,6 +242,67 @@ class MyApp(QWidget):
             else:
                 self.movie_table_widget.setRowHidden(row, True) 
 
+    # 영화정보 불러오기
+    def get_movie_info_from_database(self, movie_title):
+        db_uri = 'sqlite:///data.db'
+        engine = create_engine(db_uri)
+        metadata = MetaData()
+        movies = Table('movies', metadata, autoload_with=engine)
+        with engine.connect() as conn:
+            query = movies.select().where(movies.c.title == movie_title)
+            movie = conn.execute(query).fetchone()
+        if movie:
+            return movie[1], movie[2], movie[0]  # title, genres, movieId
+        return None, None, None
+
+    # 태그 정보 불러오는 메소드
+    def get_movie_tags_from_database(self, movie_id):
+        db_uri = 'sqlite:///data.db'
+        engine = create_engine(db_uri)
+        metadata = MetaData()
+        tags = Table('tags', metadata,
+                     Column('userId', Integer),
+                     Column('movieId', Integer),
+                     Column('tag', String),
+                     Column('timestamp', Integer)
+                    )
+        with engine.connect() as conn:
+            query = tags.select().where(tags.c.movieId == movie_id)
+            tags_list = conn.execute(query).fetchall()
+        return [tag[2] for tag in tags_list]
+    
+    def show_movie_detail(self, item):
+        row = item.row()
+        movie_title = self.movie_table_widget.item(row, 0).text()
+        db_uri = 'sqlite:///data.db'
+        engine = create_engine(db_uri)
+        metadata = MetaData()
+        movies = Table('movies', metadata, autoload_with=engine)
+        links = Table('links', metadata, autoload_with=engine)
+        with engine.connect() as conn:
+            query = movies.select().where(movies.c.title == movie_title)
+            movie = conn.execute(query).fetchone()
+            if movie:
+                movie_id = movie[0]
+                tmdb_id_query = links.select().where(links.c.movieId == movie_id)
+                tmdb_id_result = conn.execute(tmdb_id_query).fetchone()
+                if tmdb_id_result:
+                    tmdb_id = tmdb_id_result[2]
+                    movie_genres = movie[2]
+                    movie_tags = self.get_movie_tags_from_database(movie_id)
+                    tags_text = ', '.join(movie_tags) if movie_tags else 'No tags available'
+                    
+                    # TMDb API를 사용하여 영화 포스터를 가져옵니다.
+                    poster_url = fetch_movie_poster_from_tmdb(tmdb_id)
+                    
+                    # 영화 상세 정보 다이얼로그 표시
+                    dialog = MovieDetailDialog(movie_title, movie_genres, tags_text, poster_url, parent=self)
+                    dialog.exec_()
+                else:
+                    QMessageBox.information(self, "Movie Info", f"No TMDB ID found for {movie_title}")
+            else:
+                QMessageBox.information(self, "Movie Info", f"No details found for {movie_title}")
+    
     # 영화 추천 탭 초기화 메서드
     def initRecommendationTab(self):
         # 영화 추천 탭 초기화 메서드
@@ -298,6 +359,12 @@ class MyApp(QWidget):
         dialog.setWindowTitle('영화 선택')
 
         layout = QVBoxLayout()
+
+        # 검색어 입력을 위한 QLineEdit 추가
+        search_box = QLineEdit()
+        search_box.setPlaceholderText('검색어를 입력하세요...')
+        layout.addWidget(search_box)
+
         list_widget = QListWidget()
         for row in range(self.movie_table_widget.rowCount()):
             title = self.movie_table_widget.item(row, 0).text()
@@ -310,8 +377,19 @@ class MyApp(QWidget):
         
         layout.addWidget(buttons)
         dialog.setLayout(layout)
-        dialog.exec_()
 
+        # 검색어 변경 시 호출될 함수 정의
+        def filter_movies():
+            search_text = search_box.text().lower()
+            for row in range(list_widget.count()):
+                item = list_widget.item(row)
+                item.setHidden(search_text not in item.text().lower())
+        
+        # 검색어 변경 시 filter_movies 함수 호출
+        search_box.textChanged.connect(filter_movies)
+
+        dialog.exec_()
+    
     def add_selected_movie(self, list_widget, dialog):
         selected_movie = list_widget.currentItem().text()
         if selected_movie and selected_movie not in self.selected_movies:
@@ -386,68 +464,6 @@ class MyApp(QWidget):
     # 영화 추천 페이지로 이동하는 메서드
     def go_to_recommendation(self):
         self.tab_widget.setCurrentIndex(1)  # 영화 추천 탭의 인덱스는 1이므로 해당 탭으로 이동
-
-    # 영화정보 불러오기
-    def get_movie_info_from_database(self, movie_title):
-        db_uri = 'sqlite:///data.db'
-        engine = create_engine(db_uri)
-        metadata = MetaData()
-        movies = Table('movies', metadata, autoload_with=engine)
-        with engine.connect() as conn:
-            query = movies.select().where(movies.c.title == movie_title)
-            movie = conn.execute(query).fetchone()
-        if movie:
-            return movie[1], movie[2], movie[0]  # title, genres, movieId
-        return None, None, None
-
-    # 태그 정보 불러오는 메소드
-    def get_movie_tags_from_database(self, movie_id):
-        db_uri = 'sqlite:///data.db'
-        engine = create_engine(db_uri)
-        metadata = MetaData()
-        tags = Table('tags', metadata,
-                     Column('userId', Integer),
-                     Column('movieId', Integer),
-                     Column('tag', String),
-                     Column('timestamp', Integer)
-                    )
-        with engine.connect() as conn:
-            query = tags.select().where(tags.c.movieId == movie_id)
-            tags_list = conn.execute(query).fetchall()
-        return [tag[2] for tag in tags_list]
-    
-    def show_movie_detail(self, item):
-        row = item.row()
-        movie_title = self.movie_table_widget.item(row, 0).text()
-        db_uri = 'sqlite:///data.db'
-        engine = create_engine(db_uri)
-        metadata = MetaData()
-        movies = Table('movies', metadata, autoload_with=engine)
-        links = Table('links', metadata, autoload_with=engine)
-        with engine.connect() as conn:
-            query = movies.select().where(movies.c.title == movie_title)
-            movie = conn.execute(query).fetchone()
-            if movie:
-                movie_id = movie[0]
-                tmdb_id_query = links.select().where(links.c.movieId == movie_id)
-                tmdb_id_result = conn.execute(tmdb_id_query).fetchone()
-                if tmdb_id_result:
-                    tmdb_id = tmdb_id_result[2]
-                    movie_genres = movie[2]
-                    movie_tags = self.get_movie_tags_from_database(movie_id)
-                    tags_text = ', '.join(movie_tags) if movie_tags else 'No tags available'
-                    
-                    # TMDb API를 사용하여 영화 포스터를 가져옵니다.
-                    poster_url = fetch_movie_poster_from_tmdb(tmdb_id)
-                    
-                    # 영화 상세 정보 다이얼로그 표시
-                    dialog = MovieDetailDialog(movie_title, movie_genres, tags_text, poster_url, parent=self)
-                    dialog.exec_()
-                else:
-                    QMessageBox.information(self, "Movie Info", f"No TMDB ID found for {movie_title}")
-            else:
-                QMessageBox.information(self, "Movie Info", f"No details found for {movie_title}")
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
