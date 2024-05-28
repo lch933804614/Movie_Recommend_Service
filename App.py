@@ -7,6 +7,7 @@ from PyQt5.QtCore import Qt
 from sqlalchemy import create_engine, Table, Column, Integer, String, Float, MetaData
 import requests
 import tmdbsimple as tmdb
+import webbrowser
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -24,7 +25,7 @@ def fetch_movie_poster_from_tmdb(movie_id):
         return None
 
 class MovieDetailDialog(QDialog):
-    def __init__(self, title, genres, tags, poster_url, parent=None):
+    def __init__(self, title, genres, tags, poster_url, tmdb_link, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Movie Info")
         self.setFixedSize(500, 600)  # 고정된 크기로 설정
@@ -53,6 +54,10 @@ class MovieDetailDialog(QDialog):
             poster_label.setPixmap(scaled_pixmap)
             layout.addWidget(poster_label)
         
+        # TMDb 링크 추가
+        tmdb_button = QPushButton("상세정보 보기")
+        tmdb_button.clicked.connect(lambda: webbrowser.open(tmdb_link))
+        layout.addWidget(tmdb_button)
         self.setLayout(layout)
 
 class MyApp(QWidget):
@@ -295,8 +300,11 @@ class MyApp(QWidget):
                     # TMDb API를 사용하여 영화 포스터를 가져옵니다.
                     poster_url = fetch_movie_poster_from_tmdb(tmdb_id)
                     
+                    # 상세정보를 제공해주는 링크 추가
+                    tmdb_link = f"https://www.themoviedb.org/movie/{tmdb_id}"
+
                     # 영화 상세 정보 다이얼로그 표시
-                    dialog = MovieDetailDialog(movie_title, movie_genres, tags_text, poster_url, parent=self)
+                    dialog = MovieDetailDialog(movie_title, movie_genres, tags_text, poster_url, tmdb_link, parent=self)
                     dialog.exec_()
                 else:
                     QMessageBox.information(self, "Movie Info", f"No TMDB ID found for {movie_title}")
