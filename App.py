@@ -12,7 +12,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import CountVectorizer
 
 # TMDb API 키 설정
-tmdb.API_KEY = 'ef1218269ce140d0b05e4f622f7fcd02'
+tmdb.API_KEY = ''
 
 def fetch_movie_poster_from_tmdb(movie_id):
     movie = tmdb.Movies(movie_id)
